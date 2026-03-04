@@ -1,0 +1,38 @@
+{
+  "name": "topluyo-bot",
+  "version": "1.0.0",
+  "description": "TopluyoBOT - Topluyo platform bot library for JavaScript and TypeScript",
+  "main": "./index.js",
+  "module": "./index.mjs",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./index.d.mts",
+        "default": "./index.mjs"
+      },
+      "require": {
+        "types": "./index.d.ts",
+        "default": "./index.js"
+      }
+    }
+  },
+  "files": [
+    "index.js",
+    "index.mjs",
+    "index.d.ts",
+    "index.d.mts"
+  ],
+  "keywords": [
+    "topluyo",
+    "bot",
+    "websocket"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.0.0"
+  }
+}
