@@ -1,6 +1,84 @@
 const WebSocket = require('ws');
 
+// ---------------------------------------------------------------------------
+// Mesaj payload typedef'leri (JSDoc / VS Code IntelliSense için)
+// ---------------------------------------------------------------------------
 
+/**
+ * Kanala yeni bir post eklendiğinde gelen mesaj (action: 'post/add')
+ * @typedef {object} PostAddMessage
+ * @property {'post/add'} action      - Olay türü
+ * @property {string}     message     - Postu gönderen kullanıcının mesaj metni
+ * @property {string}     channel_id  - Mesajın geldiği kanalın ID'si
+ * @property {number}     user_id     - Mesajı gönderen kullanıcının ID'si
+ */
+
+/**
+ * Bir post içinde bot mention edildiğinde gelen mesaj (action: 'post/mention')
+ * @typedef {object} PostMentionMessage
+ * @property {'post/mention'} action      - Olay türü
+ * @property {string}         message     - Mention içeren post metni
+ * @property {string}         channel_id  - Mention'ın gerçekleştiği kanalın ID'si
+ * @property {number}         user_id     - Botu mention eden kullanıcının ID'si
+ */
+
+/**
+ * Bir post üzerinde bumote formu gönderildiğinde gelen mesaj (action: 'post/bumote')
+ * @typedef {object} PostBumoteMessage
+ * @property {'post/bumote'}             action    - Olay türü
+ * @property {{ form: Record<string,string>, submit: string }} message - Form verisi ve submit etiketi
+ * @property {number}                    post_id   - Bumote'un gönderildiği postun ID'si
+ * @property {number}                    user_id   - Formu gönderen kullanıcının ID'si
+ */
+
+/**
+ * Kullanıcıdan gelen direkt mesaj (action: 'message/send')
+ * @typedef {object} MessageSendMessage
+ * @property {'message/send'} action   - Olay türü
+ * @property {string}         message  - Gönderilen mesaj metni
+ * @property {number}         user_id  - Mesajı gönderen kullanıcının ID'si
+ */
+
+/**
+ * Kullanıcı gruba katıldığında gelen mesaj (action: 'group/join')
+ * @typedef {object} GroupJoinMessage
+ * @property {'group/join'} action    - Olay türü
+ * @property {number}       group_id  - Grubun ID'si
+ * @property {number}       user_id   - Katılan kullanıcının ID'si
+ */
+
+/**
+ * Kullanıcı gruptan ayrıldığında gelen mesaj (action: 'group/leave')
+ * @typedef {object} GroupLeaveMessage
+ * @property {'group/leave'} action   - Olay türü
+ * @property {number}        group_id - Grubun ID'si
+ * @property {number}        user_id  - Ayrılan kullanıcının ID'si
+ */
+
+/**
+ * Kullanıcı gruptan atıldığında gelen mesaj (action: 'group/kick')
+ * @typedef {object} GroupKickMessage
+ * @property {'group/kick'} action    - Olay türü
+ * @property {number}       group_id  - Grubun ID'si
+ * @property {number}       user_id   - Atılan kullanıcının ID'si
+ */
+
+/**
+ * Bota turbo transferi gönderildiğinde gelen mesaj (action: 'turbo/transfer')
+ * @typedef {object} TurboTransferMessage
+ * @property {'turbo/transfer'} action              - Olay türü
+ * @property {{ message: string, quantity: number }} message - Transfer notu ve miktarı
+ * @property {number}           transfer_id         - Transferin ID'si
+ * @property {number}           user_id             - Transferi gönderen kullanıcının ID'si
+ */
+
+/**
+ * bot.on('message', ...) callback'ine gelen tüm olası mesaj türleri.
+ * `data.action` alanıyla olay türü ayrıştırılır.
+ * @typedef {PostAddMessage|PostMentionMessage|PostBumoteMessage|MessageSendMessage|GroupJoinMessage|GroupLeaveMessage|GroupKickMessage|TurboTransferMessage} BotMessage
+ */
+
+// ---------------------------------------------------------------------------
 
 /**
  * Topluyo REST API isteklerini toplu (batch) hâlde gönderen iç sınıf.
@@ -190,13 +268,22 @@ function TopluyoBOT(token){
    * - `'connected'`    — Bot başarıyla kimlik doğruladı
    * - `'close'`        — Bağlantı kapandı
    * - `'auth_problem'` — Token geçersiz; yeniden bağlanılmaz
-   * - `'message'`      — Sunucudan mesaj geldi (parsed JSON)
+   * - `'message'`      — Sunucudan olay/mesaj geldi; `data.action` ile tür ayrıştırılır
    * - `'error'`        — WebSocket hatası oluştu
    * - `'*'`            — Tüm olayları dinler (event, data) şeklinde tetiklenir
    *
+   * `'message'` olayındaki `data` nesnesi şu `action` değerlerini taşıyabilir:
+   * - `'post/add'`      → `{ action, message, channel_id, user_id }`
+   * - `'post/bumote'`   → `{ action, message: { form, submit }, post_id, user_id }`
+   * - `'message/send'`  → `{ action, message, user_id }`
+   * - `'group/join'`    → `{ action, group_id, user_id }`
+   * - `'group/leave'`   → `{ action, group_id, user_id }`
+   * - `'group/kick'`    → `{ action, group_id, user_id }`
+   *
    * @param {string}   event    - Dinlenecek olay adı
    * @param {Function} callback - Olay tetiklendiğinde çağrılacak fonksiyon;
-   *                              `this` bağlamı bot örneğine bağlıdır
+   *                              `this` bağlamı bot örneğine bağlıdır;
+   *                              `'message'` olayı için `{BotMessage} data` alır
    * @returns {void}
    */
   base.on = function(event,callback){
