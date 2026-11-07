@@ -2,27 +2,22 @@
   "name": "topluyo-bot",
   "version": "1.5.3",
   "description": "TopluyoBOT - Topluyo platform bot library for JavaScript and TypeScript",
-  "main": "./index.js",
-  "module": "./index.mjs",
-  "types": "./index.d.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./index.d.mts",
-        "default": "./index.mjs"
-      },
-      "require": {
-        "types": "./index.d.ts",
-        "default": "./index.js"
-      }
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.js"
     }
   },
   "files": [
-    "index.js",
-    "index.mjs",
-    "index.d.ts",
-    "index.d.mts"
+    "dist"
   ],
+  "scripts": {
+    "build": "tsc"
+  },
   "keywords": [
     "topluyo",
     "bot",
@@ -32,7 +27,12 @@
   "engines": {
     "node": ">=18"
   },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/ws": "^8.18.2",
+    "typescript": "^5.9.3"
+  },
   "dependencies": {
-    "ws": "^8.0.0"
+    "ws": "^8.22.0"
   }
 }

@@ -76,6 +76,13 @@ bot.on('message', function (message) {
     }).then(res => console.log('Post gönderildi:', res));
   }
 });
+
+// Yeni API: action ayrıştırması otomatik yapılır, message tipi çıkarımlanır.
+bot.on('messageCreated', function (message) {
+  if (message.message === '!test') {
+    message.send('Aktifim ⚡');
+  }
+});
 ```
 
 ### ES Modules (ESM)
@@ -105,26 +112,23 @@ bot.on('message', (message) => {
 ### TypeScript
 
 ```ts
-import TopluyoBOT, { BotInstance, BotMessage, PostAddMessage } from 'topluyo-bot';
+import TopluyoBOT, { type BotInstance, type Message, type User } from 'topluyo-bot';
 
 const bot: BotInstance = TopluyoBOT('TOKENINIZ');
 
-bot.on('message', function (data: BotMessage) {
-  if (data.action === 'post/add') {
-    // data: PostAddMessage — data.message, data.channel_id, data.user_id
-    bot.post('/!api/post/add', {
-      channel_id: data.channel_id,
-      text: `Merhaba, ${data.user_id}!`
-    });
+bot.on('messageCreated', function (message: Message) {
+  console.log(message.message); // string
+  if (message.message === '!test') {
+    message.send('Aktifim ⚡');
   }
-  if (data.action === 'post/bumote') {
-    // data: PostBumoteMessage — data.message.form, data.post_id, data.user_id
-    console.log(data.message.form);
-  }
+});
+
+bot.on('userGroupJoin', function (user: User) {
+  console.log(user.id, user.group_id);
 });
 ```
 
-> 💡 Tüm interface'ler: `BotMessage`, `PostAddMessage`, `PostBumoteMessage`, `MessageSendMessage`, `GroupJoinMessage`, `GroupLeaveMessage`, `GroupKickMessage`
+JavaScript kullanıcıları `messageCreated` ve `userGroupJoin` callback'lerinde tipleri otomatik alır. Eski `message` olayı da geriye dönük uyumluluk için kullanılabilir.
 
 ---
 
@@ -525,31 +529,35 @@ bot.on('message', (message) => {
     });
   }
 });
+
+// The action is mapped automatically and editor types are inferred.
+bot.on('messageCreated', (message) => {
+  if (message.message === '!test') {
+    message.send('Online ⚡');
+  }
+});
 ```
 
 ### TypeScript
 
 ```ts
-import TopluyoBOT, { BotInstance, BotMessage, PostAddMessage } from 'topluyo-bot';
+import TopluyoBOT, { type BotInstance, type Message, type User } from 'topluyo-bot';
 
 const bot: BotInstance = TopluyoBOT('YOUR_TOKEN');
 
-bot.on('message', function (data: BotMessage) {
-  if (data.action === 'post/add') {
-    // data: PostAddMessage — data.message, data.channel_id, data.user_id
-    bot.post('/!api/post/add', {
-      channel_id: data.channel_id,
-      text: `Hello, ${data.user_id}!`
-    });
+bot.on('messageCreated', function (message: Message) {
+  console.log(message.message); // string
+  if (message.message === '!test') {
+    message.send('Online ⚡');
   }
-  if (data.action === 'post/bumote') {
-    // data: PostBumoteMessage — data.message.form, data.post_id, data.user_id
-    console.log(data.message.form);
-  }
+});
+
+bot.on('userGroupJoin', function (user: User) {
+  console.log(user.id, user.group_id);
 });
 ```
 
-> 💡 Available interfaces: `BotMessage`, `PostAddMessage`, `PostBumoteMessage`, `MessageSendMessage`, `GroupJoinMessage`, `GroupLeaveMessage`, `GroupKickMessage`
+JavaScript users get inferred callback types for `messageCreated` and `userGroupJoin`. The legacy `message` event remains available for backwards compatibility.
 
 ---
 
@@ -795,4 +803,3 @@ When the connection drops, the bot waits **1 second** and automatically reconnec
 ---
 
 Happy coding! 🚀
-
