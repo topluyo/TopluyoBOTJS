@@ -66,21 +66,24 @@ bot.on('connected', function () {
   console.log('Bağlandı! ✅');
 });
 
-bot.on('message', function (message) {
-  console.log('Gelen mesaj:', message);
-
-  if (message.action === 'post/add' && message.message === '!test') {
-    bot.post('/!api/post/add', {
-      channel_id: message.channel_id,
-      text: 'Aktifim ⚡'
-    }).then(res => console.log('Post gönderildi:', res));
-  }
-});
-
-// Yeni API: action ayrıştırması otomatik yapılır, message tipi çıkarımlanır.
 bot.on('messageCreated', function (message) {
+  console.log('Gelen mesaj:', message.message);
+
   if (message.message === '!test') {
     message.send('Aktifim ⚡');
+  }
+});
+```
+
+Eski kullanım da geriye dönük uyumluluk için desteklenir:
+
+```js
+bot.on('message', function (data) {
+  if (data.action === 'post/add' && data.message === '!test') {
+    bot.post('/!api/post/add', {
+      channel_id: data.channel_id,
+      text: 'Aktifim ⚡'
+    });
   }
 });
 ```
@@ -99,10 +102,20 @@ const bot = TopluyoBOT(TOKEN);
 
 bot.on('connected', () => console.log('Bağlandı! ✅'));
 
-bot.on('message', (message) => {
-  if (message.action === 'post/add' && message.message === '!test') {
+bot.on('messageCreated', (message) => {
+  if (message.message === '!test') {
+    message.send('Aktifim ⚡');
+  }
+});
+```
+
+Eski `message` event’inde action ayrıştırmasını kendiniz yapmak isterseniz:
+
+```js
+bot.on('message', (data) => {
+  if (data.action === 'post/add' && data.message === '!test') {
     bot.post('/!api/post/add', {
-      channel_id: message.channel_id,
+      channel_id: data.channel_id,
       text: 'Aktifim ⚡'
     });
   }
@@ -156,9 +169,14 @@ Bir olaya dinleyici ekler.
 | `'connected'`  | `() => void`                             | Bot kimlik doğrulaması başarılı           |
 | `'close'`      | `() => void`                             | Bağlantı kapandı (otomatik yeniden bağlanır) |
 | `'auth_problem'` | `() => void`                           | Token geçersiz; yeniden bağlanılmaz       |
-| `'message'`    | `(data: BotMessage) => void`             | Sunucudan mesaj/olay geldi (`data.action` ile tür ayrıştırılır) |
+| `'messageCreated'` | `(message: Message) => void`         | Post veya direkt mesaj; `message.message` metni içerir |
+| `'formCreated'` | `(interaction: FormInteraction) => void` | Form gönderildi |
+| `'userGroupJoin'` | `(user: User) => void`               | Kullanıcı gruba katıldı |
+| `'userGroupLeave'` | `(user: User) => void`              | Kullanıcı gruptan ayrıldı |
+| `'userGroupKick'` | `(user: User) => void`               | Kullanıcı gruptan atıldı |
+| `'message'`    | `(data: BotMessage) => void`             | Eski API: ham olay; tür `data.action` ile ayrıştırılır |
 | `'error'`      | `(err: Error) => void`                   | WebSocket hatası                          |
-| `'*'`          | `(event: string, data: BotMessage \| Error) => void` | Tüm olayları dinler          |
+| `'*'`          | `(event: string, data: unknown) => void` | Tüm olayları dinler                       |
 
 ```js
 // Tüm olayları loglama
@@ -202,9 +220,46 @@ Ham `WebSocket` nesnesi. İleriye dönük özel ihtiyaçlar için erişilebilir.
 
 ---
 
-## Olay Verisi – `message`
+## Yeni olaylar ve yapılar
 
-`message` olayında gelen nesneler `data.action` alanına göre ayrışır. TypeScript kullanıcıları için her tür ayrı bir interface olarak tanımlanmıştır.
+Yeni API, backend action değerlerini uygun event'e yönlendirir. JavaScript'te callback parametrelerinin tipi otomatik çıkarımlanır; TypeScript'te `Message`, `User` ve `FormInteraction` türleri kullanılabilir.
+
+### `messageCreated` — Mesaj oluşturuldu
+
+`post/add`, `post/mention` ve `message/send` action'ları için tetiklenir.
+
+| Alan | Tip | Açıklama |
+|------|-----|----------|
+| `message` | `string` | Backend'den geldiği şekliyle mesaj metni |
+| `action` | `string` | Kaynak action (`post/add`, `post/mention` veya `message/send`) |
+| `channel_id` | `string \| undefined` | Kanal ID'si |
+| `user_id` | `number` | Gönderen kullanıcı ID'si |
+| `send(text)` | `Promise` | Aynı kanala yanıt gönderir |
+| `send({ channel_id, text })` | `Promise` | İsteğe bağlı farklı kanala yanıt gönderir |
+
+```js
+bot.on('messageCreated', (message) => {
+  console.log(message.message);
+  if (message.message === '!test') {
+    message.send('Aktifim ⚡');
+    // Alternatif kanal: message.send({ channel_id: 'kanal-id', text: 'Merhaba!' });
+  }
+});
+```
+
+### Grup ve form event’leri
+
+- `formCreated`: `FormInteraction` (`form`, `submit`, `post_id`, `user_id`)
+- `userGroupJoin`, `userGroupLeave`, `userGroupKick`: `User` (`id`, `user_id`, `group_id`)
+
+```js
+bot.on('formCreated', interaction => console.log(interaction.form));
+bot.on('userGroupJoin', user => console.log(user.id, user.group_id));
+```
+
+## Eski API: ham `message` olayı
+
+Geriye dönük uyumluluk için `message` olayı kullanılmaya devam edilebilir. Gelen nesne ham payload'dır; olay türünü `data.action` ile kendiniz ayrıştırın.
 
 ---
 
@@ -358,7 +413,37 @@ bot.on('message', (data) => {
 
 ---
 
-## Tam Örnek
+## Yeni API ile Tam Örnek
+
+```js
+const TopluyoBOT = require('topluyo-bot');
+const TOKEN = require('./.token.json');
+
+const bot = TopluyoBOT(TOKEN);
+
+bot.on('connected', () => console.log('Bot bağlandı ✅'));
+bot.on('auth_problem', () => console.error('Token geçersiz!'));
+
+bot.on('messageCreated', message => {
+  if (message.message === '!test') {
+    message.send('Aktifim ⚡');
+  } else if (message.message === '!saat') {
+    message.send(`🕐 Şu an: ${new Date().toLocaleTimeString('tr-TR')}`);
+  }
+});
+
+bot.on('formCreated', interaction => {
+  console.log('Form alındı:', interaction.form);
+});
+
+bot.on('userGroupJoin', user => {
+  console.log(user.id, 'gruba katıldı —', user.group_id);
+});
+
+bot.on('error', error => console.error('Hata:', error));
+```
+
+### Eski API ile tam örnek (alternatif)
 
 ```js
 const TopluyoBOT = require('topluyo-bot');
@@ -498,10 +583,20 @@ bot.on('connected', function () {
   console.log('Connected! ✅');
 });
 
-bot.on('message', function (message) {
-  if (message.action === 'post/add' && message.message === '!test') {
+bot.on('messageCreated', function (message) {
+  if (message.message === '!test') {
+    message.send('Online ⚡');
+  }
+});
+```
+
+The legacy action-based API remains available as an alternative:
+
+```js
+bot.on('message', function (data) {
+  if (data.action === 'post/add' && data.message === '!test') {
     bot.post('/!api/post/add', {
-      channel_id: message.channel_id,
+      channel_id: data.channel_id,
       text: 'Online ⚡'
     });
   }
@@ -521,16 +616,6 @@ const TOKEN = require('./.token.json');
 const bot = TopluyoBOT(TOKEN);
 
 bot.on('connected', () => console.log('Connected! ✅'));
-bot.on('message', (message) => {
-  if (message.action === 'post/add' && message.message === '!test') {
-    bot.post('/!api/post/add', {
-      channel_id: message.channel_id,
-      text: 'Online ⚡'
-    });
-  }
-});
-
-// The action is mapped automatically and editor types are inferred.
 bot.on('messageCreated', (message) => {
   if (message.message === '!test') {
     message.send('Online ⚡');
@@ -585,9 +670,14 @@ Registers an event listener.
 | `'connected'`   | `() => void`                             | Bot authenticated successfully            |
 | `'close'`       | `() => void`                             | Connection closed (auto-reconnects)       |
 | `'auth_problem'`| `() => void`                             | Invalid token; will not reconnect         |
-| `'message'`     | `(data: BotMessage) => void`             | Message/event received — use `data.action` to distinguish types |
+| `'messageCreated'` | `(message: Message) => void`          | Post or direct message; text is `message.message` |
+| `'formCreated'` | `(interaction: FormInteraction) => void` | Form submitted |
+| `'userGroupJoin'` | `(user: User) => void`                | User joined a group |
+| `'userGroupLeave'` | `(user: User) => void`               | User left a group |
+| `'userGroupKick'` | `(user: User) => void`                | User was kicked from a group |
+| `'message'`     | `(data: BotMessage) => void`             | Legacy API: raw event; inspect `data.action` |
 | `'error'`       | `(err: Error) => void`                   | WebSocket error occurred                  |
-| `'*'`           | `(event: string, data: BotMessage \| Error) => void` | Wildcard — fires for every event |
+| `'*'`           | `(event: string, data: unknown) => void`  | Wildcard — fires for every event |
 
 ---
 
@@ -624,9 +714,76 @@ The raw `WebSocket` instance, accessible for advanced use cases.
 
 ---
 
-## `message` Event Data
+## New Events and Structures
 
-Objects received in the `message` event differ by their `data.action` field. TypeScript users have a dedicated interface for each type.
+The new API maps backend actions to dedicated event names. JavaScript callback types are inferred automatically; TypeScript users can import `Message`, `User`, and `FormInteraction`.
+
+### `messageCreated` — Message Created
+
+Emitted for `post/add`, `post/mention`, and `message/send` actions.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `message` | `string` | Raw message text received from the backend |
+| `action` | `string` | Source action (`post/add`, `post/mention`, or `message/send`) |
+| `channel_id` | `string \| undefined` | Channel ID |
+| `user_id` | `number` | Sender user ID |
+| `send(text)` | `Promise` | Reply in the same channel |
+| `send({ channel_id, text })` | `Promise` | Optionally send to a different channel |
+
+```js
+bot.on('messageCreated', (message) => {
+  console.log(message.message);
+  if (message.message === '!test') {
+    message.send('Online ⚡');
+    // Custom channel: message.send({ channel_id: 'channel-id', text: 'Hello!' });
+  }
+});
+```
+
+### Form and group events
+
+- `formCreated`: `FormInteraction` (`form`, `submit`, `post_id`, `user_id`)
+- `userGroupJoin`, `userGroupLeave`, `userGroupKick`: `User` (`id`, `user_id`, `group_id`)
+
+```js
+bot.on('formCreated', interaction => console.log(interaction.form));
+bot.on('userGroupJoin', user => console.log(user.id, user.group_id));
+```
+
+### Full example (new API)
+
+```js
+const TopluyoBOT = require('topluyo-bot');
+const TOKEN = require('./.token.json');
+
+const bot = TopluyoBOT(TOKEN);
+
+bot.on('connected', () => console.log('Bot connected ✅'));
+bot.on('auth_problem', () => console.error('Invalid token!'));
+
+bot.on('messageCreated', message => {
+  if (message.message === '!test') {
+    message.send('Online ⚡');
+  } else if (message.message === '!time') {
+    message.send(`🕐 Current time: ${new Date().toLocaleTimeString()}`);
+  }
+});
+
+bot.on('formCreated', interaction => {
+  console.log('Form received:', interaction.form);
+});
+
+bot.on('userGroupJoin', user => {
+  console.log(user.id, 'joined group', user.group_id);
+});
+
+bot.on('error', error => console.error('Error:', error));
+```
+
+## Legacy `message` Event Data
+
+For backwards compatibility, the legacy `message` event is still supported. It provides the raw payload; inspect `data.action` to distinguish event types.
 
 ---
 
